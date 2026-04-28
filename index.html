@@ -3,20 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Vocab Notebook</title>
 
     <style>
-        /* Base Styles */
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             background-color: #f4f4f9; 
             padding: 15px; 
             margin: 0;
         }
-
         .container { 
             max-width: 500px; 
             margin: auto; 
@@ -25,57 +22,39 @@
             border-radius: 12px; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
         }
-
         h2 { color: #333; text-align: center; margin-top: 0; }
-
-        /* Mobile-Friendly Inputs */
         .input-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
-        
-        input { 
-            padding: 12px; 
-            border: 1px solid #ddd; 
-            border-radius: 8px; 
-            font-size: 16px; /* Prevents auto-zoom on iPhone */
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; }
+        button#add-btn { 
+            padding: 12px; background-color: #007bff; color: white; border: none; 
+            border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; min-height: 48px; 
         }
-
-        button { 
-            padding: 12px; 
-            background-color: #007bff; 
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            font-size: 16px; 
-            font-weight: bold;
-            cursor: pointer;
-            min-height: 48px; /* Easier to tap with thumbs */
-        }
-
-        button:active { background-color: #0056b3; transform: scale(0.98); }
-
-        /* List Styles */
         ul { list-style: none; padding: 0; margin-top: 20px; }
         
+        /* Style for the list item to allow space for the delete button */
         li { 
-            background: #fff; 
-            border-bottom: 1px solid #eee; 
-            padding: 15px 0; 
-            line-height: 1.4;
+            background: #fff; border-bottom: 1px solid #eee; 
+            padding: 15px 0; display: flex; justify-content: space-between; align-items: center;
         }
-
+        .word-content { flex: 1; padding-right: 10px; }
         .word-text { font-weight: bold; color: #007bff; display: block; margin-bottom: 4px; }
+        
+        /* Delete Button Style */
+        .delete-btn {
+            background-color: #ff4d4d; color: white; border: none; padding: 5px 10px;
+            border-radius: 6px; cursor: pointer; font-size: 14px; min-width: 40px; min-height: 40px;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>My Vocab Tracker</h2>
-    
     <div class="input-group">
-        <input type="text" id="wordInput" placeholder="New word (e.g. Resilient)">
+        <input type="text" id="wordInput" placeholder="New word...">
         <input type="text" id="defInput" placeholder="Definition...">
-        <button onclick="addWord()">Add to List</button>
+        <button id="add-btn" onclick="addWord()">Add to List</button>
     </div>
-
     <ul id="vocabList"></ul>
 </div>
 
@@ -87,12 +66,10 @@
     document.addEventListener('DOMContentLoaded', getWords);
 
     function addWord() {
-        if (wordInput.value.trim() === '' || defInput.value.trim() === '') {
-            alert("Please fill in both fields!");
-            return;
-        }
+        if (wordInput.value.trim() === '' || defInput.value.trim() === '') return;
 
         const vocabEntry = {
+            id: Date.now(), // Unique ID to help us delete the right one
             word: wordInput.value,
             definition: defInput.value
         };
@@ -106,8 +83,15 @@
 
     function createListElement(entry) {
         const li = document.createElement('li');
-        li.innerHTML = `<span class="word-text">${entry.word}</span> ${entry.definition}`;
-        // Adds newest words to the top of the list
+        li.setAttribute('data-id', entry.id); // Store the ID on the HTML element
+
+        li.innerHTML = `
+            <div class="word-content">
+                <span class="word-text">${entry.word}</span> ${entry.definition}
+            </div>
+            <button class="delete-btn" onclick="deleteWord(${entry.id})">Delete</button>
+        `;
+        
         vocabList.insertBefore(li, vocabList.firstChild);
     }
 
@@ -119,8 +103,19 @@
 
     function getWords() {
         let words = localStorage.getItem('words') ? JSON.parse(localStorage.getItem('words')) : [];
-        // Reverse so that saved items appear in order of newest first
         words.forEach(entry => createListElement(entry));
+    }
+
+    // NEW: Function to delete a word
+    function deleteWord(id) {
+        // 1. Remove from UI
+        const elementToRemove = document.querySelector(`[data-id="${id}"]`);
+        elementToRemove.remove();
+
+        // 2. Remove from LocalStorage
+        let words = JSON.parse(localStorage.getItem('words'));
+        const filteredWords = words.filter(word => word.id !== id);
+        localStorage.setItem('words', JSON.stringify(filteredWords));
     }
 </script>
 
