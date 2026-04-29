@@ -34,11 +34,11 @@
 </div>
 
 <script type="module">
-    // 1. Import Firebase tools
+    // 1. Import Firebase tools (Now with offline cache enabled!)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { initializeFirestore, persistentLocalCache, collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-    // 2. YOUR SPECIFIC FIREBASE CONFIGURATION (From your screenshot!)
+    // 2. YOUR SPECIFIC FIREBASE CONFIGURATION
     const firebaseConfig = {
         apiKey: "AIzaSyBXAEDFZxLSSDpSqgmrYdNBEGnuJ32Fxao",
         authDomain: "vocabtracker-635f7.firebaseapp.com",
@@ -48,9 +48,11 @@
         appId: "1:4191928958:web:abe7b8c0e68befcb790e2f"
     };
 
-    // 3. Initialize Firebase and the Database
+    // 3. Initialize Firebase and the Database with OFFLINE SUPPORT
     const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+    const db = initializeFirestore(app, {
+        localCache: persistentLocalCache()
+    });
 
     // 4. UI Elements
     const vocabList = document.getElementById('vocabList');
@@ -78,7 +80,7 @@
             defInput.value = '';
         } catch (error) {
             console.error("Error adding document: ", error);
-            alert("Failed to save to cloud. Did you enable Firestore in the console?");
+            alert("Failed to save. Check console.");
         }
         
         addBtn.innerText = "Add to Cloud";
@@ -99,7 +101,7 @@
             });
         } catch (error) {
             console.error("Error getting documents: ", error);
-            vocabList.innerHTML = "<li>Error loading data. Make sure Firestore is enabled!</li>";
+            vocabList.innerHTML = "<li>Error loading data.</li>";
         }
     }
 
