@@ -144,34 +144,69 @@
     const vocabList = document.getElementById('vocabList');
     const wordInput = document.getElementById('wordInput');
     const defInput = document.getElementById('defInput');
-    const tagInput = document.getElementById('tagInput'); // NEW
+    const tagInput = document.getElementById('tagInput'); 
     const addBtn = document.getElementById('add-btn');
     const magicBtn = document.getElementById('magic-btn'); 
     const studyToggle = document.getElementById('studyToggle');
     const inputContainer = document.getElementById('inputContainer');
-    const filterBtns = document.querySelectorAll('.filter-btn'); // NEW
+    const filterBtns = document.querySelectorAll('.filter-btn'); 
+
+    // Your Dictionary Key
+    const MW_API_KEY = "1d689ff1-dfb4-449e-852c-44af6d34cedb"; 
 
     document.addEventListener('DOMContentLoaded', getWords);
     addBtn.addEventListener('click', addWord);
     magicBtn.addEventListener('click', fetchDefinition); 
 
+    // --- NEW: BACKGROUND AUTO-DETECT WHEN YOU FINISH TYPING ---
+    // 'blur' means you tapped outside of the text box
+    wordInput.addEventListener('blur', async () => {
+        const word = wordInput.value.trim();
+        if (word === '') return; // Do nothing if it's empty
+
+        try {
+            // Secretly ask the dictionary in the background
+            const response = await fetch(`https://www.dictionaryapi.com/api/v3/references/learners/json/${word}?key=${MW_API_KEY}`);
+            const data = await response.json();
+
+            if (data.length && typeof data[0] !== 'string') {
+                const partOfSpeech = data[0].fl || ""; 
+                let foundCategory = false;
+
+                if (partOfSpeech) {
+                    const posLower = partOfSpeech.toLowerCase();
+                    if (posLower.includes("noun")) { tagInput.value = "Noun"; foundCategory = true; }
+                    else if (posLower.includes("verb")) { tagInput.value = "Verb"; foundCategory = true; }
+                    else if (posLower.includes("adjective") || posLower.includes("adj")) { tagInput.value = "Adjective"; foundCategory = true; }
+                    else { tagInput.value = "General"; }
+                }
+
+                // If it successfully changed the dropdown, flash it green!
+                if (foundCategory) {
+                    tagInput.style.transition = "background-color 0.3s ease";
+                    tagInput.style.backgroundColor = "#c6f6d5"; 
+                    setTimeout(() => { tagInput.style.backgroundColor = "#fff"; }, 600);
+                }
+            }
+        } catch (error) {
+            console.log("Background check failed, that's okay.");
+        }
+    });
+
     // --- FILTER LOGIC ---
     filterBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
-            // 1. Change the visual active state of the buttons
             filterBtns.forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             
-            // 2. Hide/Show the list items based on the data-tag
             const filterValue = e.target.getAttribute('data-filter');
             const allItems = vocabList.querySelectorAll('li');
             
             allItems.forEach(li => {
-                // If "All" is selected, or if the item's tag matches the filter, show it!
                 if (filterValue === 'All' || li.getAttribute('data-tag') === filterValue) {
                     li.style.display = 'block';
                 } else {
-                    li.style.display = 'none'; // Hide it
+                    li.style.display = 'none';
                 }
             });
         });
@@ -189,14 +224,10 @@
         }
     });
 
-    // --- MERRIAM-WEBSTER API ---
-    // --- UPGRADED: MERRIAM-WEBSTER API WITH AUTO-TAGGING ---
+    // --- MAGIC BUTTON API ---
     async function fetchDefinition() {
         const word = wordInput.value.trim(); 
         if (word === '') { alert("Please type a word first!"); return; }
-
-        // 🚨 KEEP YOUR EXISTING API KEY HERE 🚨
-        const MW_API_KEY = "1d689ff1-dfb4-449e-852c-44af6d34cedb"; 
 
         magicBtn.innerText = "⏳";
         defInput.placeholder = "Searching...";
@@ -209,30 +240,26 @@
             
             if (!data.length || typeof data[0] === 'string') throw new Error("Word not found");
             
-            // 1. Grab the definition
             const definition = data[0].shortdef[0];
-            
-            // 2. NEW: Grab the "Functional Label" (Part of Speech) from the dictionary
-            const partOfSpeech = data[0].fl; 
+            const partOfSpeech = data[0].fl || ""; 
 
             if (definition) {
                 defInput.value = definition;
                 
-                // 3. NEW: Auto-select the correct tag in the dropdown!
+                // Auto-select logic
+                let foundCategory = false;
                 if (partOfSpeech) {
                     const posLower = partOfSpeech.toLowerCase();
-                    
-                    // We use .includes() because sometimes the dictionary says "phrasal verb" or "plural noun"
-                    if (posLower.includes("noun")) {
-                        tagInput.value = "Noun";
-                    } else if (posLower.includes("verb")) {
-                        tagInput.value = "Verb";
-                    } else if (posLower.includes("adjective")) {
-                        tagInput.value = "Adjective";
-                    } else {
-                        // If it is an adverb, pronoun, or preposition, default to General
-                        tagInput.value = "General"; 
-                    }
+                    if (posLower.includes("noun")) { tagInput.value = "Noun"; foundCategory = true; }
+                    else if (posLower.includes("verb")) { tagInput.value = "Verb"; foundCategory = true; }
+                    else if (posLower.includes("adjective") || posLower.includes("adj")) { tagInput.value = "Adjective"; foundCategory = true; }
+                    else { tagInput.value = "General"; }
+                }
+
+                if (foundCategory) {
+                    tagInput.style.transition = "background-color 0.3s ease";
+                    tagInput.style.backgroundColor = "#c6f6d5"; 
+                    setTimeout(() => { tagInput.style.backgroundColor = "#fff"; }, 600);
                 }
             } else {
                 throw new Error("No short definition available");
@@ -249,13 +276,13 @@
         if (wordInput.value.trim() === '' || defInput.value.trim() === '') return;
         addBtn.innerText = "Saving..."; 
 
-        const selectedTag = tagInput.value; // Grab the selected tag
+        const selectedTag = tagInput.value; 
 
         try {
             const docRef = await addDoc(collection(db, "vocabWords"), {
                 word: wordInput.value,
                 definition: defInput.value,
-                tag: selectedTag, // Save the tag to the cloud!
+                tag: selectedTag, 
                 timestamp: Date.now() 
             });
             createListElement(docRef.id, wordInput.value, defInput.value, selectedTag);
@@ -274,7 +301,6 @@
             vocabList.innerHTML = ""; 
             querySnapshot.forEach((doc) => {
                 const data = doc.data();
-                // Ensure old words without tags default to "General"
                 const wordTag = data.tag ? data.tag : "General"; 
                 createListElement(doc.id, data.word, data.definition, wordTag);
             });
@@ -296,11 +322,7 @@
 
     function createListElement(id, wordText, defText, tagText) {
         const li = document.createElement('li');
-        
-        // Add the tag as a "data attribute" so our filter buttons can find it easily
         li.setAttribute('data-tag', tagText); 
-        
-        // Make sure the CSS class matches the tag (e.g., tag-noun, tag-verb)
         const tagClass = `tag-${tagText.toLowerCase()}`;
 
         li.innerHTML = `
@@ -313,7 +335,6 @@
                     <span style="color: #4a5568; font-size: 0.9em;">${defText}</span>
                 </div>
             </div>
-            
             <div class="flashcard-view">
                 <div class="flashcard-inner">
                     <div class="flashcard-front">
